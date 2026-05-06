@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from nicegui import app, ui
 
 from translate import _
+from webui.apprise_notifier import send_apprise
 
 if TYPE_CHECKING:
     from webui.manager import WebUIManager
@@ -16,6 +17,7 @@ class DropSection:
         self._manager = manager
 
         self._current_drop = None
+        self._notified_progress: dict[str, int] = {}
         self._countdown_active: bool = False
         self._progress_seconds: int = 0
         self._countdown_start_time: float | None = None
@@ -84,6 +86,7 @@ class DropSection:
             self._countdown_start_time = None
             self._progress_seconds = 60
         self._do_display(drop)
+        self._notify_progress(drop)
         self.tick()
 
     def clear(self) -> None:
@@ -144,3 +147,33 @@ class DropSection:
         self._drop_progress_value = 0.0
         self._drop_percentage_text = "-%"
         self._drop_remaining_text = ""
+
+    def _notify_progress(self, drop) -> None:
+        if drop.is_claimed or drop.required_minutes <= 0:
+            return
+        percent = int(drop.progress * 100)
+        bucket = percent // 5 * 5
+        if bucket <= 0 or bucket >= 100:
+            return
+        key = str(drop.id)
+        if self._notified_progress.get(key) == bucket:
+            return
+        self._notified_progress[key] = bucket
+        campaign = drop.campaign
+        send_apprise(
+            self._manager._twitch.settings,
+            "📈 Drop Progress",
+            "\n".join(
+                (
+                    f"🎮 Campaign: {campaign.game.name} | {campaign.name}",
+                    f"🎁 Drop: {drop.rewards_text()}",
+                    f"📊 Progress: {percent}% ({drop.current_minutes}/{drop.required_minutes} min)",
+                    _progress_bar(drop.progress),
+                )
+            ),
+        )
+
+
+def _progress_bar(progress: float) -> str:
+    filled = int(progress * 20)
+    return "🟦" * filled + "░" * (20 - filled)

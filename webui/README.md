@@ -17,7 +17,7 @@ When you start the WebUI:
 The WebUI requires NiceGUI to be installed:
 
 ```bash
-pip install nicegui
+pip install -r requirements-nicegui.txt
 ```
 
 ## Usage
@@ -64,6 +64,18 @@ WebUI settings are stored in your standard Twitch Drops Miner settings file (`se
   - `127.0.0.1` or `localhost` - Local access only
   
 - **webui_port**: Port to serve on (default: `8080`)
+- **apprise_urls**: List of Apprise URLs for external notifications (default: `[]`)
+
+Example:
+
+```json
+"apprise_urls": [
+    "discord://webhook_id/webhook_token",
+    "tgram://bot_token/chat_id"
+]
+```
+
+When configured, Apprise receives session-started, fatal-error, drop-claimed, and drop-progress notifications. Drop progress is sent once per 5% bucket per drop.
 
 You can modify these settings in the WebUI's Settings tab or by editing `settings.json` directly.
 

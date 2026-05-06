@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from translate import _
+from webui.apprise_notifier import send_apprise
 
 if TYPE_CHECKING:
     from yarl import URL
@@ -28,6 +29,7 @@ class LoginFormAdapter:
         self._manager = manager
         self._confirm = asyncio.Event()
         self.page_url: "URL | None" = None
+        self._notified_user_id: int | None = None
 
     def clear(self, login: bool = False, password: bool = False, token: bool = False):
         pass
@@ -54,6 +56,13 @@ class LoginFormAdapter:
 
     def update(self, status: str, user_id: int | None):
         self._manager.main_panel.update_login(status, user_id)
+        if user_id is not None and user_id != self._notified_user_id:
+            self._notified_user_id = user_id
+            send_apprise(
+                self._manager._twitch.settings,
+                "⛏ Farm Online",
+                f"Session started\nTwitch Drops Miner started for user ID: {user_id}",
+            )
         # Mirror login state to the status bar when the main loop hasn't set it yet
         login_statuses = (
             _("gui", "login", "logging_in"),

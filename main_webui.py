@@ -42,6 +42,7 @@ if __name__ == "__main__":
     from version import __version__
     from exceptions import CaptchaRequired
     from utils import lock_file
+    from webui.apprise_notifier import send_apprise
     from constants import LOGGING_LEVELS, SELF_PATH, FILE_FORMATTER, LOG_PATH, LOCK_PATH
 
     warnings.simplefilter("default", ResourceWarning)
@@ -176,6 +177,11 @@ if __name__ == "__main__":
             client.print(_("error", "captcha"))
         except Exception:
             exit_status = 1
+            send_apprise(
+                settings,
+                "⚠️ Miner Error",
+                "A fatal error occurred. Check application logs for details.",
+            )
             client.prevent_close()
             client.print("Fatal error encountered:\n")
             client.print(traceback.format_exc())
