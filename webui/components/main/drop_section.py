@@ -163,7 +163,7 @@ class DropSection:
         send_apprise(
             self._manager._twitch.settings,
             "📈 Drop Progress",
-            "\n".join(
+            "\n" + "\n".join(
                 (
                     f"🎮 Campaign: {campaign.game.name} | {campaign.name}",
                     f"🎁 Drop: {drop.rewards_text()}",
@@ -175,5 +175,5 @@ class DropSection:
 
 
 def _progress_bar(progress: float) -> str:
-    filled = int(progress * 20)
-    return "🟦" * filled + "░" * (20 - filled)
+    filled = int(progress * 10)
+    return "█" * filled + "░" * (10 - filled)

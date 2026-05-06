@@ -180,7 +180,7 @@ if __name__ == "__main__":
             send_apprise(
                 settings,
                 "⚠️ Miner Error",
-                "A fatal error occurred. Check application logs for details.",
+                "\nA fatal error occurred. Check application logs for details.",
             )
             client.prevent_close()
             client.print("Fatal error encountered:\n")

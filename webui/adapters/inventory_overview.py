@@ -17,7 +17,7 @@ class InventoryOverviewAdapter:
 
     def __init__(self, manager: "WebUIManager"):
         self._manager = manager
-        self._notified_campaigns: set[str] = set()
+        self._campaign_active: dict[str, bool] = {}
         self._notified_claims: set[str] = set()
 
     def clear(self):
@@ -25,12 +25,13 @@ class InventoryOverviewAdapter:
 
     async def add_campaign(self, campaign) -> None:
         self._manager.inventory_panel.add_campaign(campaign)
-        if campaign.active and campaign.id not in self._notified_campaigns:
-            self._notified_campaigns.add(campaign.id)
+        was_active = self._campaign_active.get(campaign.id)
+        self._campaign_active[campaign.id] = campaign.active
+        if campaign.active and was_active is False:
             send_apprise(
                 self._manager._twitch.settings,
                 "🚀 Campaign Started",
-                f"🎮 Campaign: {campaign.game.name} | {campaign.name}",
+                f"\n🎮 Campaign: {campaign.game.name} | {campaign.name}",
             )
 
     def update_drop(self, drop) -> None:
@@ -41,7 +42,7 @@ class InventoryOverviewAdapter:
             send_apprise(
                 self._manager._twitch.settings,
                 "✅ Drop Claimed",
-                "\n".join(
+                "\n" + "\n".join(
                     (
                         "🎁 Reward:",
                         f"{campaign.game.name} | {campaign.name} ({campaign.claimed_drops}/{campaign.total_drops}) | {drop.rewards_text()}",

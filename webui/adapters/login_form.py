@@ -61,7 +61,7 @@ class LoginFormAdapter:
             send_apprise(
                 self._manager._twitch.settings,
                 "⛏ Farm Online",
-                f"Session started\nTwitch Drops Miner started for user ID: {user_id}",
+                f"\nSession started\nTwitch Drops Miner started for user ID: {user_id}",
             )
         # Mirror login state to the status bar when the main loop hasn't set it yet
         login_statuses = (
