@@ -21,6 +21,7 @@ class GeneralSection:
             if manager._twitch.settings.proxy
             else ""
         )
+        self._apprise_urls_text = "\n".join(manager._twitch.settings.apprise_urls)
 
     @property
     def _settings(self):
@@ -123,6 +124,13 @@ class GeneralSection:
                         ),
                     ).bind_value_from(settings, "available_drops_check")
 
+                ui.label("Apprise URLs (one per line)").classes("text-xs")
+                ui.textarea(
+                    value=self._apprise_urls_text,
+                    placeholder="tgram://bot_token/chat_id",
+                    on_change=lambda e: self._on_apprise_urls_change(e.value),
+                ).classes("w-full text-xs").props("dense")
+
             with ui.card().props("flat bordered").classes("w-full q-pa-sm"):
                 ui.label(_("gui", "settings", "reload_text")).classes("text-xs")
                 ui.button(
@@ -158,6 +166,14 @@ class GeneralSection:
             for client in app.clients():
                 with client:
                     ui.run_javascript(request_notification_permission_js())
+
+    def _on_apprise_urls_change(self, value: str) -> None:
+        self._apprise_urls_text = value
+        GeneralSection._set_and_save(
+            self._settings,
+            "apprise_urls",
+            [url.strip() for url in value.splitlines() if url.strip()],
+        )
 
     @staticmethod
     def _set_and_save(settings, name: str, value) -> None:
