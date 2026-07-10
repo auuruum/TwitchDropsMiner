@@ -100,6 +100,7 @@ class DropSection:
         drop = self._current_drop
         if drop is None:
             return
+        self._do_display(drop)
         if self._countdown_active and self._countdown_start_time is not None:
             elapsed = int(monotonic() - self._countdown_start_time)
             self._progress_seconds = max(0, 60 - elapsed)
