@@ -19,7 +19,7 @@ class ChannelsSection:
         self._watching_channel_iid = None
         self._selected_channel_iid = None
         self._channel_rows: list[dict] = []
-        self._channel_tables: list = []
+        self._channel_tables: list[ui.table] = []
 
     def build(self) -> None:
         with (
@@ -173,7 +173,7 @@ class ChannelsSection:
                 r for r in self._channel_rows if r["iid"] == self._selected_channel_iid
             ]
         self._channel_tables.append(table)
-        ui.context.client.on_disconnect(
+        ui.context.client.on_delete(
             lambda: (
                 self._channel_tables.remove(table)
                 if table in self._channel_tables

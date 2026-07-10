@@ -13,6 +13,7 @@ from multiprocessing import freeze_support
 
 if __name__ == "__main__":
     freeze_support()
+    import os
     import sys
     import signal
     import asyncio
@@ -43,7 +44,16 @@ if __name__ == "__main__":
     from exceptions import CaptchaRequired
     from utils import lock_file
     from webui.apprise_notifier import send_apprise
-    from constants import LOGGING_LEVELS, SELF_PATH, FILE_FORMATTER, LOG_PATH, LOCK_PATH
+    from constants import (
+        LOGGING_LEVELS,
+        SELF_PATH,
+        FILE_FORMATTER,
+        LOG_PATH,
+        LOCK_PATH,
+        CONFIG_PATH,
+    )
+    from webui.auth import AuthManager
+    from webui.ssl import get_ssl_kwargs
 
     warnings.simplefilter("default", ResourceWarning)
 
@@ -123,6 +133,9 @@ if __name__ == "__main__":
         print("Install it with: pip install nicegui")
         sys.exit(1)
     from pathlib import Path
+
+    # Initialize authentication if enabled
+    AuthManager()
 
     # Global state for the Twitch client
     twitch_client: Twitch | None = None
@@ -232,9 +245,17 @@ if __name__ == "__main__":
         if not success:
             sys.exit(3)
 
-        # Get host/port from settings object (uses __getattr__)
-        host = getattr(settings, "webui_host", "0.0.0.0")
-        port = getattr(settings, "webui_port", 5800)
+        host = os.environ.get("WEBUI_HOST", "0.0.0.0")
+        port = os.environ.get("WEBUI_PORT", "5800")
+        try:
+            port = int(port)
+            if not (1 <= port <= 65535):
+                raise ValueError
+        except ValueError:
+            print(
+                f"ERROR: WEBUI_PORT must be an integer between 1 and 65535, got: {port}"
+            )
+            sys.exit(1)
 
         try:
             ui.run(
@@ -244,6 +265,7 @@ if __name__ == "__main__":
                 show=False,
                 reload=False,
                 favicon=Path(__file__).parent / "icons" / "pickaxe.ico",
+                **get_ssl_kwargs(CONFIG_PATH / "certs"),
             )
         except KeyboardInterrupt:
             pass
