@@ -482,6 +482,8 @@ class Channel:
     async def send_watch(self) -> bool:
         if self._stream is None:
             return False
+        if self._spade_url is None:
+            self._spade_url = await self.get_spade_url()
         try:
             async with self._twitch.request(
                 "POST", self._spade_url, data=self._stream._spade_payload
