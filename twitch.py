@@ -882,6 +882,8 @@ class Twitch:
     @task_wrapper(critical=True)
     async def _watch_loop(self) -> NoReturn:
         interval: float = WATCH_INTERVAL.total_seconds()
+        last_drop_progress: tuple[str, int] | None = None
+        stalled_progress_checks = 0
         while True:
             channel: Channel = await self.watching_channel.get()
             if not channel.online:
@@ -918,13 +920,25 @@ class Twitch:
                 if drop_data is not None:
                     gql_drop: TimedDrop | None = self._drops.get(drop_data["dropID"])
                     if gql_drop is not None and gql_drop.can_earn(channel):
-                        gql_drop.update_minutes(drop_data["currentMinutesWatched"])
-                        gql_drop.display()
+                        current_minutes = drop_data["currentMinutesWatched"]
+                        progress = (gql_drop.id, current_minutes)
+                        stalled_progress_checks = (
+                            stalled_progress_checks + 1
+                            if progress == last_drop_progress
+                            else 0
+                        )
+                        last_drop_progress = progress
+                        gql_drop.update_minutes(current_minutes)
+                        gql_drop.display(countdown=False)
                         drop_text: str = (
                             f"{gql_drop.name} ({gql_drop.campaign.game}, "
                             f"{gql_drop.current_minutes}/{gql_drop.required_minutes})"
                         )
                         logger.log(CALL, f"Drop progress from GQL: {drop_text}")
+                        if stalled_progress_checks >= 3:
+                            logger.warning("Drop progress stalled; resending watch")
+                            stalled_progress_checks = 0
+                            continue
                         handled = True
 
                 # Solution 2: If GQL fails, figure out which campaign we're most likely mining
