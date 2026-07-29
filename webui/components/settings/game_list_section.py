@@ -83,8 +83,8 @@ class GameListSection(ABC):
                 .props("dense")
                 .on("keydown.enter", lambda: self._add_game(input_el))
             )
-            with ui.button(icon="expand_more").props("dense flat").classes(
-                "p-0 min-h-0"
+            with (
+                ui.button(icon="expand_more").props("dense flat").classes("p-0 min-h-0")
             ):
                 with ui.menu():
                     for name in self._options():
@@ -136,18 +136,25 @@ class GameListSection(ABC):
 
     def _confirm_unknown_game(self, name: str, on_confirm) -> None:
         with ui.dialog() as dialog, ui.card().classes("q-pa-sm"):
-            ui.label(f'"{name}" has no active drop campaigns.').classes(
+            ui.label(_("webui", "game_list", "no_campaigns").format(name=name)).classes(
                 "text-sm font-bold"
             )
-            ui.label("Add it anyway?").classes("text-xs")
+            ui.label(_("webui", "game_list", "add_anyway")).classes("text-xs")
             with ui.row().classes("gap-2 justify-end w-full"):
-                ui.button("Cancel", on_click=dialog.close).props("dense flat").classes(
-                    "text-xs"
-                )
+
+                def _cancel():
+                    dialog.close()
+                    dialog.delete()
 
                 def _confirm():
                     dialog.close()
+                    dialog.delete()
                     on_confirm()
 
-                ui.button("Add", on_click=_confirm).props("dense").classes("text-xs")
+                ui.button(_("webui", "game_list", "cancel"), on_click=_cancel).props(
+                    "dense flat"
+                ).classes("text-xs")
+                ui.button(_("webui", "game_list", "add"), on_click=_confirm).props(
+                    "dense"
+                ).classes("text-xs")
         dialog.open()

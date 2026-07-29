@@ -18,7 +18,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -28,7 +28,7 @@ jobs:
       - name: Validate language files
         run: |
           failed=()
-          for file in "lang/"*.json; do
+          for file in "lang/"*.json "webui/lang/"*.json; do
             if err="$(python -m json.tool "${file}" 2>&1 >/dev/null)"; then
               echo "[OK] ${file}"
             else
@@ -44,26 +44,19 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
-    needs:
-      - validate
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
-      - name: Set up Python
-        uses: actions/setup-python@v6
+      - name: Setup uv and Python
+        uses: astral-sh/setup-uv@v8.3.2
         with:
           python-version: ${{env.PYTHON_VERSION}}
-
-      - name: Install dependencies
-        run: |
-          python -m pip install -r requirements-nicegui.txt
-          python -m pip install pytest
+          enable-cache: true
 
       - name: Run tests
-        run: |
-          python -m pytest tests/ -x
+        run: uv run --group nicegui --group test pytest tests/ -x
 
   windows:
     if: false
@@ -74,7 +67,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up variables
         id: vars
@@ -89,7 +82,7 @@ jobs:
 
       # Ensure Python version
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{env.PYTHON_VERSION}}
 
@@ -125,7 +118,7 @@ jobs:
           Compress-Archive -Path $FolderName -DestinationPath Twitch.Drops.Miner.Windows.zip
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           if-no-files-found: error
           name: Twitch.Drops.Miner.Windows
@@ -140,7 +133,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up variables
         id: vars
@@ -152,7 +145,7 @@ jobs:
           sed -i '' -E "s/^(__version__\s*=\s*\"[^\"]+)/\1.${{steps.vars.outputs.sha_short}}/" version.py
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{env.PYTHON_VERSION}}
 
@@ -178,7 +171,7 @@ jobs:
           zip -r Twitch.Drops.Miner.MacOS.zip "$FOLDER"
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           if-no-files-found: error
           name: Twitch.Drops.Miner.MacOS
@@ -201,7 +194,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up variables
         id: vars
@@ -214,7 +207,7 @@ jobs:
 
       # Ensure Python version
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{env.PYTHON_VERSION}}
 
@@ -261,7 +254,7 @@ jobs:
           7z a 'Twitch.Drops.Miner.Linux.PyInstaller-${{matrix.arch}}.zip' "${folder}"
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           if-no-files-found: error
           name: Twitch.Drops.Miner.Linux.PyInstaller-${{matrix.arch}}
@@ -284,7 +277,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up variables
         id: vars
@@ -298,8 +291,11 @@ jobs:
 
       - name: Install appimage-builder
         run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install wheel
+          python3 -m pip install setuptools setuptools_scm
           # TODO: Switch to a stable release if/when a version newer than 1.1.0 is released.
-          python3 -m pip install git+https://github.com/AppImageCrafters/appimage-builder.git@e995e8edcc227d14524cf39f9824c238f9435a22
+          python3 -m pip install git+https://github.com/AppImageCrafters/appimage-builder.git@1a8794d3c89f288fbd82b9accd7c0b74611147d5
 
       - name: Create AppImage
         env:
@@ -318,7 +314,7 @@ jobs:
           7z a 'Twitch.Drops.Miner.Linux.AppImage-${{matrix.arch}}.zip' "${folder}"
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           if-no-files-found: error
           name: Twitch.Drops.Miner.Linux.AppImage-${{matrix.arch}}
@@ -338,11 +334,12 @@ jobs:
             runner: ubuntu-24.04-arm
     runs-on: ${{matrix.runner}}
     needs:
+      - validate
       - test
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up variables
         id: vars
@@ -390,11 +387,12 @@ jobs:
             runner: ubuntu-24.04-arm
     runs-on: ${{matrix.runner}}
     needs:
+      - validate
       - test
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up variables
         id: vars

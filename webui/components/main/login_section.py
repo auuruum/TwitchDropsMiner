@@ -29,8 +29,8 @@ class LoginSection:
             self._close_login_popup()
 
     def build(self) -> None:
-        with ui.card().props("flat bordered").classes(
-            "gap-1 grow shrink basis-[180px]"
+        with (
+            ui.card().props("flat bordered").classes("gap-1 grow shrink basis-[180px]")
         ):
             ui.label(_("gui", "login", "name")).classes("font-bold text-sm mb-1")
             with ui.row().classes("gap-4 items-start"):
@@ -56,7 +56,9 @@ class LoginSection:
                 self,
                 "_login_state",
                 backward=lambda s: (
-                    "Logout" if s == "logged_in" else _("gui", "login", "button")
+                    _("webui", "login", "logout")
+                    if s == "logged_in"
+                    else _("gui", "login", "button")
                 ),
             ).bind_visibility_from(
                 self,
@@ -85,7 +87,7 @@ class LoginSection:
     async def _on_btn_click(self) -> None:
         if self._login_state == "logged_in":
             self._btn_enabled = False
-            self._manager.logout()
+            await self._manager.logout()
         else:
             await self._open_login_popup()
 
