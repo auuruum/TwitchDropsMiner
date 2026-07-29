@@ -21,6 +21,7 @@ class InventoryOverviewAdapter:
         self._notified_claims: set[str] = set()
 
     def clear(self):
+        self._manager.clear_drop()
         self._manager.inventory_panel.clear()
 
     async def add_campaign(self, campaign) -> None:
