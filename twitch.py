@@ -583,6 +583,31 @@ class Twitch:
             return MAX_INT
         return self.wanted_games.index(game)
 
+    def get_exclusivity(self, channel: Channel) -> int:
+        """
+        Return the ACL size of the most exclusive campaign the given channel can progress.
+
+        Lower numbers -> fewer channels can progress that campaign (ex. streamer-specific drops),
+        so the channel should be preferred over ones with wider ACLs (ex. Twitch Rivals).
+        MAX_INT signifies only campaigns without an ACL (general drops) apply.
+        """
+        exclusivity: int = MAX_INT
+        for campaign in self.inventory:
+            if (
+                campaign.allowed_channels
+                and campaign.game in self.wanted_games
+                # an online channel only progresses campaigns for the game it's playing
+                and (channel.game is None or channel.game == campaign.game)
+                # in the ACL and has drops left to earn - claimed streamer drops get no bonus
+                and campaign.can_earn(channel, ignore_channel_status=True)
+            ):
+                exclusivity = min(exclusivity, len(campaign.allowed_channels))
+        return exclusivity
+
+    def _switch_order(self, channel: Channel) -> tuple[int, int, bool]:
+        # game priority first, then campaign exclusivity, then ACL-based channels first
+        return (self.get_priority(channel), self.get_exclusivity(channel), not channel.acl_based)
+
     @staticmethod
     def _viewers_key(channel: Channel) -> int:
         if (viewers := channel.viewers) is not None:
@@ -769,6 +794,7 @@ class Twitch:
                     new_channels, key=self._viewers_key, reverse=True
                 )
                 ordered_channels.sort(key=lambda ch: ch.acl_based, reverse=True)
+                ordered_channels.sort(key=self.get_exclusivity)
                 ordered_channels.sort(key=self.get_priority)
                 # ensure that we won't end up with more channels than we can handle
                 # NOTE: we trim from the end because that's where the non-priority,
@@ -854,7 +880,7 @@ class Twitch:
                     # for a switch (including the watching one)
                     # NOTE: we need to sort the channels every time because one channel
                     # can end up streaming any game - channels aren't game-tied
-                    for channel in sorted(channels.values(), key=self.get_priority):
+                    for channel in sorted(channels.values(), key=self._switch_order):
                         if self.should_switch(channel):
                             new_watching = channel
                             break
@@ -1035,15 +1061,10 @@ class Twitch:
         watching_channel = self.watching_channel.get_with_default(None)
         if watching_channel is None or not self.can_watch(watching_channel):
             return True
-        channel_order = self.get_priority(channel)
-        watching_order = self.get_priority(watching_channel)
-        return (
-            # this channel's game is higher order than the watching one's
-            channel_order < watching_order
-            or channel_order == watching_order  # or the order is the same
-            # and this channel is ACL-based and the watching channel isn't
-            and channel.acl_based > watching_channel.acl_based
-        )
+        # this channel's game is higher order than the watching one's,
+        # or the game is the same and this channel progresses a more exclusive campaign,
+        # or both are equal and this channel is ACL-based and the watching channel isn't
+        return self._switch_order(channel) < self._switch_order(watching_channel)
 
     def watch(self, channel: Channel, *, update_status: bool = True):
         self.gui.tray.change_icon("active")
