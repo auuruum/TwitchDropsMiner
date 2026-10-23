@@ -30,6 +30,7 @@ class LoginFormAdapter:
         self._confirm = asyncio.Event()
         self.page_url: "URL | None" = None
         self._notified_user_id: int | None = None
+        self._login_required_notified = False
         self.browser_login_enabled = (
             os.environ.get("WEBUI_TWITCH_LOGIN", "android-browser") == "android-browser"
         )
@@ -104,12 +105,24 @@ class LoginFormAdapter:
 
     def update(self, status: str, user_id: int | None):
         self._manager.main_panel.update_login(status, user_id)
+        if status == _("gui", "login", "required") and not self._login_required_notified:
+            self._login_required_notified = True
+            send_apprise(
+                self._manager._twitch.settings,
+                "Twitch Login Required",
+                "The miner is running but cannot mine until you sign in. "
+                "Open the WebUI and complete Twitch login.",
+            )
+        if user_id is not None:
+            self._login_required_notified = False
         if user_id is not None and user_id != self._notified_user_id:
             self._notified_user_id = user_id
             send_apprise(
                 self._manager._twitch.settings,
                 "⛏ Farm Online",
-                f"\nSession started\nTwitch Drops Miner started for user ID: {user_id}",
+                f"\nSigned in as user ID: {user_id}\n"
+                "Loading campaigns and selecting a stream. "
+                "Farm Started will follow when watching begins.",
             )
         # Mirror login state to the status bar when the main loop hasn't set it yet
         login_statuses = (

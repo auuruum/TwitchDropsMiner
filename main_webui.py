@@ -43,7 +43,7 @@ if __name__ == "__main__":
     from version import __version__
     from exceptions import CaptchaRequired
     from utils import lock_file
-    from webui.apprise_notifier import send_apprise
+    from webui.apprise_notifier import flush_notifications, send_miner_error
     from constants import (
         LOGGING_LEVELS,
         SELF_PATH,
@@ -191,14 +191,15 @@ if __name__ == "__main__":
             await client.run()
         except CaptchaRequired:
             exit_status = 1
+            client.gui.notifications.error(
+                "Twitch requires a CAPTCHA. Open the WebUI and complete login."
+            )
             client.prevent_close()
             client.print(_("error", "captcha"))
-        except Exception:
+        except Exception as exc:
             exit_status = 1
-            send_apprise(
-                settings,
-                "⚠️ Miner Error",
-                "\nA fatal error occurred. Check application logs for details.",
+            client.gui.notifications.error(
+                f"A fatal backend error occurred ({type(exc).__name__})."
             )
             client.prevent_close()
             client.print("Fatal error encountered:\n")
@@ -211,6 +212,8 @@ if __name__ == "__main__":
             await client.shutdown()
 
         if not client.gui.close_requested:
+            exit_status = 1
+            client.gui.notifications.error("The mining backend stopped unexpectedly.")
             client.gui.tray.change_icon("error")
             client.print(_("status", "terminated"))
             client.gui.status.update(_("gui", "status", "terminated"))
@@ -233,6 +236,12 @@ if __name__ == "__main__":
         try:
             await run_twitch_backend()
         except Exception as e:
+            exit_status = 1
+            message = f"Backend initialization or shutdown failed ({type(e).__name__})."
+            if twitch_client is not None:
+                twitch_client.gui.notifications.error(message)
+            else:
+                send_miner_error(settings, message)
             print(f"Backend error: {e}")
             traceback.print_exc()
             app.shutdown()
@@ -243,6 +252,7 @@ if __name__ == "__main__":
         global twitch_client
         if twitch_client is not None:
             twitch_client.gui.close()
+        await flush_notifications()
 
     @app.get("/health")
     async def healthcheck():

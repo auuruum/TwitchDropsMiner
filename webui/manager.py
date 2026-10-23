@@ -57,6 +57,7 @@ from .adapters import (
     HelpTabAdapter,
 )
 from .handlers import WebUIOutputHandler
+from .farm_status import FarmStatusNotifier
 from .html_utils import favicon_js, request_notification_permission_js
 from .components import (
     BasePanel,
@@ -95,6 +96,8 @@ class WebUIManager:
         self._close_requested = asyncio.Event()
         self._reload_requested = asyncio.Event()
         self._running = False
+        self.notifications = FarmStatusNotifier(twitch)
+        app.timer(5.0, self.notifications.check)
 
         # Shared UI state
         self._current_icon: str = "pickaxe"

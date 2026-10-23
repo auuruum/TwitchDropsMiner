@@ -17,3 +17,7 @@ class WebUIOutputHandler(logging.Handler):
 
     def emit(self, record):
         self._output.print(self.format(record))
+        if record.levelno >= logging.ERROR and record.exc_info:
+            self._output.notifications.error(
+                f"A background task failed ({type(record.exc_info[1]).__name__})."
+            )

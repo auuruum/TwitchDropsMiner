@@ -15,6 +15,7 @@ tkinter = [
     "pillow",
 ]
 nicegui = [
+    "apprise>=1.9.0,<2.0.0",
     "nicegui>=3.11.1,<4.0.0",
     "pwdlib[argon2]",
     "pyjwt",

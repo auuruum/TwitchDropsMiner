@@ -159,7 +159,23 @@ Apprise notifications are configured with `apprise_urls` in `config/settings.jso
 ]
 ```
 
-They cover session start, fatal errors, claimed drops, and each 5% progress bucket.
+Notifications report these stages separately:
+- **Farm Online**: signed in; campaigns and channels are still loading.
+- **Farm Started**: a live stream has been selected (reported within five seconds).
+- **Farm Confirmed**: Twitch has reported the first actual progress increase, even below 5%.
+- **Farm Ready**: the miner is healthy and waiting for eligible drops or live channels.
+- **Miner Warning**: no Twitch-confirmed progress increase for ten minutes while watching.
+  This sends once until progress resumes; **Farm Recovered** reports recovery.
+- **Miner Error / Twitch Login Required**: a backend or background task failed, or login
+  needs attention. Error messages include log, update, dependency and restart guidance.
+
+Claim and existing 5% progress notifications are unchanged. These are percentage
+buckets, not fixed five-minute intervals. Local estimated minutes do not count as
+confirmation for startup or stall monitoring.
+
+Notification delivery is awaited for up to ten seconds during orderly shutdown.
+Power loss, SIGKILL, a completely blocked event loop or a network outage can prevent
+in-process alerts; detecting those requires an external monitor.
 
 ## Features
 
