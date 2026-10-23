@@ -159,6 +159,11 @@ Apprise notifications are configured with `apprise_urls` in `config/settings.jso
 ]
 ```
 
+Every notification includes the currently watched channel's name and Twitch URL.
+Before a stream is selected or while idle/offline, it says `Channel: not watching`.
+The channel is captured when the notification is queued, so switching streams does
+not change the channel shown in an already queued message.
+
 Notifications report these stages separately:
 - **Farm Online**: signed in; campaigns and channels are still loading.
 - **Farm Started**: a live stream has been selected (reported within five seconds).

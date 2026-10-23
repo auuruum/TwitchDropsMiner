@@ -27,7 +27,10 @@ class FarmStatusNotifier:
     def error(self, message: str) -> None:
         if not self._error_notified:
             self._error_notified = True
-            send_miner_error(self._twitch.settings, message)
+            send_miner_error(
+                self._twitch.settings, message,
+                channel=self._twitch.watching_channel.get_with_default(None),
+            )
 
     def check(self) -> None:
         twitch = self._twitch
@@ -51,6 +54,7 @@ class FarmStatusNotifier:
                     "Farm Ready",
                     "Signed in and running. No eligible drops or live channels are available "
                     "right now. The miner is waiting and will start automatically.",
+                    channel=channel,
                 )
             return
 
@@ -61,21 +65,22 @@ class FarmStatusNotifier:
             send_apprise(
                 twitch.settings,
                 "Farm Started",
-                f"Game: {game}\nChannel: {channel.name}\n"
+                f"Game: {game}\n"
                 "Stream selected; watching has started. Waiting for Twitch to confirm "
                 "the first progress increase.",
+                channel=channel,
             )
 
         campaign = twitch.get_active_campaign(channel)
         drop = campaign.first_drop if campaign is not None else None
-        details = f"Channel: {channel.name}"
+        details = ""
         if drop is not None:
             minutes = drop.real_current_minutes
             if drop.is_claimed or drop.required_minutes <= 0:
                 self._last_progress_at = None
                 return
-            details += (
-                f"\nCampaign: {campaign.game.name} | {campaign.name}"
+            details = (
+                f"Campaign: {campaign.game.name} | {campaign.name}"
                 f"\nDrop: {drop.rewards_text()}"
                 f"\nTwitch progress: {minutes}/{drop.required_minutes} min"
             )
@@ -93,6 +98,7 @@ class FarmStatusNotifier:
                             twitch.settings,
                             "Farm Recovered" if recovering else "Farm Confirmed",
                             "Twitch confirmed that drop progress is increasing.\n" + details,
+                            channel=channel,
                         )
                     self._confirmed = True
                     self._stall_notified = False
@@ -111,4 +117,5 @@ class FarmStatusNotifier:
                 "Miner Warning",
                 "No Twitch-confirmed progress increase for 10 minutes while watching. "
                 "Mining may be stalled.\n" + details + "\n\n" + RECOVERY_HINT,
+                channel=channel,
             )

@@ -49,7 +49,7 @@ def test_stream_selection_reports_start_without_claiming_progress(farm):
     farm.clock[0] = 5
     farm.monitor.check()
     assert titles(farm) == ["Farm Started"]
-    assert "streamer" in farm.notify.call_args.args[2]
+    assert farm.notify.call_args.kwargs["channel"] is farm.channel
     assert "Waiting for Twitch" in farm.notify.call_args.args[2]
 
 
@@ -176,7 +176,9 @@ def test_existing_progress_notifications_still_use_five_percent_buckets(monkeypa
     notify = MagicMock()
     monkeypatch.setattr(drop_section, "send_apprise", notify)
     section = object.__new__(drop_section.DropSection)
-    section._manager = SimpleNamespace(_twitch=SimpleNamespace(settings=SimpleNamespace()))
+    section._manager = SimpleNamespace(_twitch=SimpleNamespace(
+        settings=SimpleNamespace(), watching_channel=MagicMock(),
+    ))
     section._notified_progress = {}
     drop = SimpleNamespace(
         id="drop", is_claimed=False, required_minutes=100, current_minutes=4,

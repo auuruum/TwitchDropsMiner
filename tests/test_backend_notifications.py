@@ -39,6 +39,7 @@ def test_backend_failure_notifies_once_and_shutdown_flushes_it(monkeypatch, fail
             if failure == "initialization":
                 raise ValueError("private initialization details")
             self.settings = settings
+            self.watching_channel = SimpleNamespace(get_with_default=lambda default: None)
             self.gui = SimpleNamespace(
                 close_requested=False, notifications=FarmStatusNotifier(self),
                 tray=MagicMock(), status=MagicMock(), grab_attention=MagicMock(),

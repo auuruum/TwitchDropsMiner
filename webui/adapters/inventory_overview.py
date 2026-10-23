@@ -33,6 +33,7 @@ class InventoryOverviewAdapter:
                 self._manager._twitch.settings,
                 "🚀 Campaign Started",
                 f"\n🎮 Campaign: {campaign.game.name} | {campaign.name}",
+                channel=self._manager._twitch.watching_channel.get_with_default(None),
             )
 
     def update_drop(self, drop) -> None:
@@ -49,6 +50,7 @@ class InventoryOverviewAdapter:
                         f"{campaign.game.name} | {campaign.name} ({campaign.claimed_drops}/{campaign.total_drops}) | {drop.rewards_text()}",
                     )
                 ),
+                channel=self._manager._twitch.watching_channel.get_with_default(None),
             )
 
     def configure_theme(self, *, bg: str):

@@ -112,6 +112,7 @@ class LoginFormAdapter:
                 "Twitch Login Required",
                 "The miner is running but cannot mine until you sign in. "
                 "Open the WebUI and complete Twitch login.",
+                channel=self._manager._twitch.watching_channel.get_with_default(None),
             )
         if user_id is not None:
             self._login_required_notified = False
@@ -123,6 +124,7 @@ class LoginFormAdapter:
                 f"\nSigned in as user ID: {user_id}\n"
                 "Loading campaigns and selecting a stream. "
                 "Farm Started will follow when watching begins.",
+                channel=self._manager._twitch.watching_channel.get_with_default(None),
             )
         # Mirror login state to the status bar when the main loop hasn't set it yet
         login_statuses = (

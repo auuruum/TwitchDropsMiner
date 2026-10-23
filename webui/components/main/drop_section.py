@@ -172,6 +172,7 @@ class DropSection:
                     _progress_bar(drop.progress),
                 )
             ),
+            channel=self._manager._twitch.watching_channel.get_with_default(None),
         )
 
 

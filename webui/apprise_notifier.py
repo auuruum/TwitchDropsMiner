@@ -6,6 +6,7 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from channel import Channel
     from settings import Settings
 
 
@@ -19,10 +20,18 @@ RECOVERY_HINT = (
 )
 
 
-def send_apprise(settings: "Settings", title: str, body: str) -> asyncio.Task[None] | None:
+def send_apprise(
+    settings: "Settings", title: str, body: str, *, channel: "Channel | None" = None
+) -> asyncio.Task[None] | None:
     urls = _apprise_urls(settings)
     if not urls:
         return
+    channel_text = (
+        f"{channel.name} ({channel.url})"
+        if channel is not None and channel.online
+        else "not watching"
+    )
+    body = body.rstrip() + f"\nChannel: {channel_text}"
     try:
         loop = asyncio.get_running_loop()
     except RuntimeError:
@@ -34,8 +43,10 @@ def send_apprise(settings: "Settings", title: str, body: str) -> asyncio.Task[No
         return task
 
 
-def send_miner_error(settings: "Settings", message: str) -> None:
-    send_apprise(settings, "Miner Error", message + "\n\n" + RECOVERY_HINT)
+def send_miner_error(
+    settings: "Settings", message: str, *, channel: "Channel | None" = None
+) -> None:
+    send_apprise(settings, "Miner Error", message + "\n\n" + RECOVERY_HINT, channel=channel)
 
 
 async def flush_notifications() -> None:

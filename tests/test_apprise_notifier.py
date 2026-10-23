@@ -21,7 +21,7 @@ def test_shutdown_waits_for_queued_notification(monkeypatch):
         assert not notifier._pending_notifications
 
     asyncio.run(run())
-    assert delivered == [("Title", "Body")]
+    assert delivered == [("Title", "Body\nChannel: not watching")]
 
 
 def test_provider_exception_does_not_leak_credentials_or_raise(monkeypatch, caplog):
