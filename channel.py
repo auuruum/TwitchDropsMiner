@@ -324,6 +324,13 @@ class Channel:
         return URLType(match.group(1))
 
     def _check_drops_enabled(self, available_drops: list[JsonType]) -> bool:
+        # Twitch's AvailableDrops list can leave out game campaigns entirely,
+        # so being in the ACL of a campaign we can still progress counts as drops enabled
+        if any(
+            campaign.allowed_channels and campaign.can_earn(self, ignore_channel_status=True)
+            for campaign in self._twitch.inventory
+        ):
+            return True
         return any(
             (
                 (campaign := self._twitch._campaigns.get(campaign_data["id"])) is not None
