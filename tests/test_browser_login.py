@@ -41,7 +41,7 @@ def login_context(monkeypatch, webui_auth_state):
     manager = SimpleNamespace(
         main_panel=MagicMock(),
         status=MagicMock(),
-        _twitch=SimpleNamespace(settings=SimpleNamespace(stdlog=False)),
+        _twitch=SimpleNamespace(settings=SimpleNamespace(stdlog=False), watching_channel=SimpleNamespace(get_with_default=lambda default: None)),
     )
     manager.print = WebUIManager.print.__get__(manager)
     manager.coro_unless_closed = WebUIManager.coro_unless_closed.__get__(manager)

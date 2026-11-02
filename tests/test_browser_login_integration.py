@@ -82,7 +82,7 @@ addEventListener('load', async () => {
         manager = SimpleNamespace(
             main_panel=MagicMock(),
             status=MagicMock(),
-            _twitch=SimpleNamespace(settings=SimpleNamespace(stdlog=False)),
+            _twitch=SimpleNamespace(settings=SimpleNamespace(stdlog=False), watching_channel=SimpleNamespace(get_with_default=lambda default: None)),
             _close_requested=asyncio.Event(),
             _reload_requested=asyncio.Event(),
         )
