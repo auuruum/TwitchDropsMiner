@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -10,6 +11,7 @@ from webui.apprise_notifier import send_apprise
 
 if TYPE_CHECKING:
     from yarl import URL
+    from zendriver import Browser
     from webui.manager import WebUIManager
 
 
@@ -22,7 +24,7 @@ class LoginData:
 
 class LoginFormAdapter:
     """
-    Mirrors LoginForm and handles device-code or experimental browser login.
+    Mirrors LoginForm and hosts upstream's browser login in the WebUI.
     """
 
     def __init__(self, manager: "WebUIManager"):
@@ -35,6 +37,8 @@ class LoginFormAdapter:
             os.environ.get("WEBUI_TWITCH_LOGIN", "android-browser") == "android-browser"
         )
         self._browser_cancel = asyncio.Event()
+        self.browser_login_active = False
+        self._browser: Browser | None = None
         if self.browser_login_enabled:
             from webui.browser_display import BrowserDisplay
 
@@ -44,6 +48,14 @@ class LoginFormAdapter:
         pass
 
     async def wait_for_login_press(self) -> None:
+        if self.browser_login_active and (
+            self._browser is None or self._browser.stopped
+        ):
+            from webui.browser_login import BrowserLoginRetry
+
+            # Upstream has already printed the failure. Close the viewer and
+            # let the outer loop offer a fresh attempt from the Login button.
+            raise BrowserLoginRetry()
         self._confirm.clear()
         await self._manager.coro_unless_closed(self._confirm.wait())
 
@@ -66,16 +78,16 @@ class LoginFormAdapter:
     def cancel_browser_login(self) -> None:
         self._browser_cancel.set()
 
-    async def ask_browser_login(self) -> str:
-        return await self._manager.coro_unless_closed(self._browser_login_loop())
+    async def ask_browser_login(self, login: Callable[[], Awaitable[str]]) -> str:
+        return await self._manager.coro_unless_closed(self._browser_login_loop(login))
 
-    async def _browser_login_loop(self) -> str:
+    async def _browser_login_loop(self, login: Callable[[], Awaitable[str]]) -> str:
         from webui.browser_display import BrowserDisplayError
-        from webui.browser_login import BrowserLoginError, browser_login
+        from webui.browser_login import BrowserLoginError, BrowserLoginRetry, browser_login
 
-        def report(message: str) -> None:
-            self._manager.print(message)
-            self._manager.main_panel.update_browser_login(message=message)
+        def ready(browser: Browser) -> None:
+            self._browser = browser
+            self._manager.main_panel.update_browser_login(starting=False)
 
         self.page_url = None
         while True:
@@ -83,6 +95,7 @@ class LoginFormAdapter:
             self.update(_("gui", "login", "required"), None)
             await self._confirm.wait()
             self._browser_cancel.clear()
+            self.browser_login_active = True
             self.update(_("gui", "login", "logging_in"), None)
             self._manager.main_panel.update_browser_login(
                 starting=True, message=_("webui", "login", "starting_browser")
@@ -91,16 +104,19 @@ class LoginFormAdapter:
                 async with self._browser_display as display:
                     self._manager.main_panel.update_browser_login(url=display.view_url)
                     return await browser_login(
+                        login,
                         display.display,
                         self._browser_cancel,
-                        report,
-                        on_ready=lambda: self._manager.main_panel.update_browser_login(
-                            starting=False
-                        ),
+                        self._manager.print,
+                        on_ready=ready,
                     )
+            except BrowserLoginRetry:
+                pass
             except (BrowserDisplayError, BrowserLoginError) as exc:
-                report(str(exc))
+                self._manager.print(str(exc))
             finally:
+                self.browser_login_active = False
+                self._browser = None
                 self._manager.main_panel.update_browser_login(url="", starting=False)
 
     def update(self, status: str, user_id: int | None):

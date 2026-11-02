@@ -2276,6 +2276,7 @@ dependencies = [
     { name = "aiohttp" },
     { name = "pywin32", marker = "sys_platform == 'win32'" },
     { name = "truststore" },
+    { name = "zendriver" },
 ]
 
 [package.dev-dependencies]
@@ -2288,7 +2289,6 @@ nicegui = [
     { name = "pwdlib", extra = ["argon2"] },
     { name = "pyjwt" },
     { name = "slowapi" },
-    { name = "zendriver" },
 ]
 test = [
     { name = "pytest" },
@@ -2302,6 +2302,7 @@ requires-dist = [
     { name = "aiohttp", specifier = ">=3.9,<4.0" },
     { name = "pywin32", marker = "sys_platform == 'win32'" },
     { name = "truststore" },
+    { name = "zendriver", specifier = "==0.17.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -2312,7 +2313,6 @@ nicegui = [
     { name = "pwdlib", extras = ["argon2"] },
     { name = "pyjwt" },
     { name = "slowapi" },
-    { name = "zendriver", specifier = "==0.17.0" },
 ]
 test = [{ name = "pytest" }]
 tkinter = [{ name = "pillow" }]
