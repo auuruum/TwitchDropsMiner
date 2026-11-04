@@ -19,7 +19,7 @@ script_copy=$3
 trap 'rm -f -- "$script_copy"' EXIT
 cd -- "$project_dir"
 
-branch=codex/latest-webui-sync
+branch=webui
 service="twitch-drops-$(basename -- "$project_dir" | tr -c 'A-Za-z0-9_.\n-' '-')"
 unit=/etc/systemd/system/$service.service
 venv=$project_dir/env
