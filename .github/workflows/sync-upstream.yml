@@ -1,0 +1,149 @@
+# Merges fireph/webui into this fork's webui branch, but pushes only when the
+# merge is clean and the tests pass. Otherwise it opens (or updates) an issue
+# and leaves webui untouched, so servers that follow webui never get the break.
+#
+# Kept in its own file (not upstream-merge.yml) so upstream edits to their
+# workflow never conflict with this one.
+#
+# If upstream changes files under .github/workflows/, GitHub refuses the push
+# from the default token. Add a fine-grained token with Contents and Workflows
+# read/write as the SYNC_TOKEN secret to cover that case.
+
+name: Sync Upstream
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+env:
+  UPSTREAM_URL: https://github.com/fireph/TwitchDropsMiner.git
+  UPSTREAM_BRANCH: webui
+  TARGET_BRANCH: webui
+  PYTHON_VERSION: "3.10"
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TARGET_BRANCH }}
+          fetch-depth: 0
+          token: ${{ secrets.SYNC_TOKEN || github.token }}
+
+      - name: Fetch upstream
+        id: fetch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add upstream "$UPSTREAM_URL"
+          git fetch --no-tags upstream "$UPSTREAM_BRANCH"
+          behind=$(git rev-list --count "HEAD..upstream/$UPSTREAM_BRANCH")
+          echo "behind=$behind" >> "$GITHUB_OUTPUT"
+          echo "upstream_sha=$(git rev-parse --short "upstream/$UPSTREAM_BRANCH")" >> "$GITHUB_OUTPUT"
+          echo "Commits behind upstream: $behind"
+
+      - name: Merge upstream
+        id: merge
+        if: steps.fetch.outputs.behind != '0'
+        run: |
+          if git merge --no-ff --no-edit "upstream/$UPSTREAM_BRANCH" > merge.log 2>&1; then
+            cat merge.log
+          else
+            cat merge.log
+            git diff --name-only --diff-filter=U | sed 's/^/CONFLICT: /' >> merge.log
+            git merge --abort
+            exit 1
+          fi
+
+      - name: Set up uv and Python
+        if: steps.fetch.outputs.behind != '0'
+        uses: astral-sh/setup-uv@v10.3.1
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
+
+      - name: Validate language files
+        id: lang
+        if: steps.fetch.outputs.behind != '0'
+        run: |
+          set -o pipefail
+          status=0
+          for file in lang/*.json webui/lang/*.json; do
+            python -m json.tool "$file" >/dev/null 2>>lang.log || { echo "Invalid: $file" | tee -a lang.log; status=1; }
+          done
+          exit $status
+
+      - name: Run tests
+        id: tests
+        if: steps.fetch.outputs.behind != '0'
+        run: |
+          set -o pipefail
+          uv run --group nicegui --group test pytest tests/ -q 2>&1 | tee test.log
+
+      - name: Push merged branch
+        if: steps.fetch.outputs.behind != '0'
+        run: git push origin "HEAD:$TARGET_BRANCH"
+
+      - name: Report failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          UPSTREAM_SHA: ${{ steps.fetch.outputs.upstream_sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="Upstream sync blocked"
+          {
+            echo "The automatic merge of \`fireph/$UPSTREAM_BRANCH\` (\`$UPSTREAM_SHA\`) into \`$TARGET_BRANCH\` stopped. Nothing was pushed."
+            echo
+            echo "Run: $RUN_URL"
+            echo
+            echo "To fix it locally:"
+            echo
+            echo '```sh'
+            echo "git fetch upstream && git switch $TARGET_BRANCH && git merge upstream/$UPSTREAM_BRANCH"
+            echo "uv run --group nicegui --group test pytest tests/"
+            echo '```'
+            for log in merge.log lang.log test.log; do
+              [ -s "$log" ] || continue
+              echo
+              echo "<details><summary>$log (last 60 lines)</summary>"
+              echo
+              echo '```'
+              tail -n 60 "$log"
+              echo '```'
+              echo "</details>"
+            done
+          } > issue.md
+          cat issue.md >> "$GITHUB_STEP_SUMMARY"
+          # Forks start with issues disabled; the failed run's email and this
+          # summary still report the problem then.
+          if [ "$(gh repo view "$GITHUB_REPOSITORY" --json hasIssuesEnabled --jq .hasIssuesEnabled)" != "true" ]; then
+            echo "::warning::Issues are disabled on this repository; see the run summary."
+            exit 0
+          fi
+          number=$(gh issue list --state open --search "in:title \"$title\"" --json number --jq '.[0].number')
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body-file issue.md
+          else
+            gh issue create --title "$title" --body-file issue.md
+          fi
+
+      - name: Summary
+        if: success()
+        run: |
+          if [ "${{ steps.fetch.outputs.behind }}" = "0" ]; then
+            echo "Already up to date with upstream." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Merged ${{ steps.fetch.outputs.behind }} upstream commits; tests passed; pushed to $TARGET_BRANCH." >> "$GITHUB_STEP_SUMMARY"
+          fi
