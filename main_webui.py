@@ -22,9 +22,13 @@ if __name__ == "__main__":
     import warnings
     import traceback
 
-    import truststore
+    # On Linux truststore only re-loads OpenSSL's default CA paths, but it does so
+    # on every connection; with OpenSSL 3.0 each reload makes later handshakes
+    # slower, until a long-running server spends all its CPU in TLS handshakes.
+    if sys.platform != "linux":
+        import truststore
 
-    truststore.inject_into_ssl()
+        truststore.inject_into_ssl()
 
     from translate import _
 
